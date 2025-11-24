@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "261229837580",
+    "project_id": "apron-auth",
+    "storage_bucket": "apron-auth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:261229837580:android:ca5da062d719fd5356dd29",
+        "android_client_info": {
+          "package_name": "com.example.meals"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGvf-tBiehHj1ftJqgx5fvLtqDkkQaLOs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
