@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:meals/screens/home.dart';
+import 'package:meals/screens/pantry_screen.dart';
+import 'package:meals/screens/shopping_lists_screen.dart';
 
 class MainDrawer extends StatelessWidget {
-  const MainDrawer({super.key, required this.onSelectScreen});
-
-  final void Function(String identifier) onSelectScreen;
+  const MainDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +17,9 @@ class MainDrawer extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   Theme.of(context).colorScheme.primaryContainer,
-                  Theme.of(context).colorScheme.primaryContainer.withAlpha(70),
+                  Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.8),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -31,7 +34,7 @@ class MainDrawer extends StatelessWidget {
                 ),
                 const SizedBox(width: 18),
                 Text(
-                  'Cooking up!',
+                  'Apron',
                   style: Theme.of(context).textTheme.titleLarge!.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                   ),
@@ -40,37 +43,35 @@ class MainDrawer extends StatelessWidget {
             ),
           ),
           ListTile(
-            leading: Icon(
-              Icons.restaurant,
-              size: 26,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-            title: Text(
-              'Meals',
-              style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 24,
-              ),
-            ),
+            leading: const Icon(Icons.home),
+            title: const Text('Home'),
             onTap: () {
-              onSelectScreen('meals');
+              Navigator.of(context).pop(); // Închide drawer-ul
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+              );
             },
           ),
           ListTile(
-            leading: Icon(
-              Icons.settings,
-              size: 26,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-            title: Text(
-              'Settings',
-              style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 24,
-              ),
-            ),
+            leading: const Icon(Icons.shelves),
+            title: const Text('Pantry'),
             onTap: () {
-              onSelectScreen('filters');
+              Navigator.of(context).pop(); // Închide drawer-ul
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (ctx) => PantryScreen()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.shopping_cart),
+            title: const Text('Shopping List'),
+            onTap: () {
+              Navigator.of(context).pop(); // Închide drawer-ul
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (ctx) => const ShoppingListsScreen(),
+                ),
+              );
             },
           ),
         ],

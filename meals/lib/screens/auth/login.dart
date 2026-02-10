@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:meals/screens/auth/signup.dart';
-import 'package:meals/screens/tabs.dart';
+import 'package:meals/screens/home.dart';
 import 'package:meals/screens/auth/forgot_password.dart';
 import 'package:meals/screens/auth/verify_email.dart';
 
@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => TabsScreen()),
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
         }
       }
@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
   goToHome(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => TabsScreen()),
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
     );
   }
 

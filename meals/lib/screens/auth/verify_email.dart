@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:meals/screens/tabs.dart';
+// import 'package:meals/screens/tabs.dart';
+import 'package:meals/screens/pantry_screen.dart';
 import 'package:meals/screens/auth/signup.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
@@ -30,7 +31,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     if (_isVerified) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => TabsScreen()),
+        MaterialPageRoute(builder: (context) => PantryScreen()),
       );
     }
   }

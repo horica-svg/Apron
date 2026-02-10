@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:meals/screens/auth/login.dart';
-import 'package:meals/screens/tabs.dart';
 import 'package:meals/screens/auth/verify_email.dart';
 import 'package:meals/services/auth_service.dart';
 
@@ -54,12 +53,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  goToHome(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => TabsScreen()),
-    );
-  }
+  // goToHome(BuildContext context) {
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(builder: (context) => TabsScreen()),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {

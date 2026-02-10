@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:meals/screens/tabs.dart';
 import 'package:meals/screens/auth/login.dart';
 import 'package:meals/screens/auth/verify_email.dart';
 import 'package:meals/services/auth_service.dart';
+import 'home.dart';
 
 class AuthWrapper extends StatelessWidget {
   AuthWrapper({super.key});
@@ -26,7 +26,7 @@ class AuthWrapper extends StatelessWidget {
             return const VerifyEmailScreen();
           }
           // Altfel, arată ecranul principal al aplicației
-          return const TabsScreen();
+          return const HomeScreen();
         }
         // Dacă nu există utilizator, arată ecranul de login
         return const LoginScreen();

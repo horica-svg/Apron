@@ -20,6 +20,11 @@ class AuthService {
       User? user = userCredential.user;
 
       if (user != null) {
+        // Trimite email de verificare imediat după creare
+        if (!user.emailVerified) {
+          await user.sendEmailVerification();
+        }
+
         await _firestore.collection('users').doc(user.uid).set({
           'email': user.email,
           'createdAt': Timestamp.now(), // Folosește timestamp-ul serverului
@@ -39,10 +44,10 @@ class AuthService {
           .add({'_init_': true});
 
       return userCredential;
-    } on FirebaseAuthException catch (e) {
-      // Poți gestiona erorile aici (ex: email deja folosit)
-      print(e.message);
-      return null;
+    } on FirebaseAuthException {
+      // Propagăm excepția pentru a fi gestionată în UI.
+      // Acest lucru permite afișarea unui mesaj specific utilizatorului.
+      rethrow;
     }
   }
 }
