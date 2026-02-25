@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:meals/screens/auth/login.dart';
 import 'package:meals/screens/auth/verify_email.dart';
 import 'package:meals/services/auth_service.dart';
-import 'home.dart';
+import 'package:meals/screens/home.dart';
 
 class AuthWrapper extends StatelessWidget {
   AuthWrapper({super.key});
