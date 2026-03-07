@@ -60,13 +60,6 @@ class PantryScreen extends StatelessWidget {
             itemCount: items.length,
             itemBuilder: (context, index) {
               final item = items[index];
-              final isExpired =
-                  item.expiryDate != null &&
-                  item.expiryDate!.isBefore(DateTime.now());
-              final isExpiringSoon =
-                  item.expiryDate != null &&
-                  !isExpired &&
-                  item.expiryDate!.difference(DateTime.now()).inDays < 3;
 
               return Dismissible(
                 key: Key(item.id!),
