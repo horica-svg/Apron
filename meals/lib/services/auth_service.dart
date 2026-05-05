@@ -28,26 +28,47 @@ class AuthService {
         await _firestore.collection('users').doc(user.uid).set({
           'email': user.email,
           'createdAt': Timestamp.now(), // Folosește timestamp-ul serverului
+          // Gamification init
+          'level': 1,
+          'currentXP': 0,
+          'totalRecipesCooked': 0,
+          'hasSeenTutorial': false,
         });
+
+        // Initialize Default Pantry (Main)
+        DocumentReference defaultPantryRef = await _firestore
+            .collection('pantries')
+            .add({
+              'name': 'Main Pantry',
+              'createdAt': Timestamp.now(),
+              'ownerId': user.uid,
+              'members': [user.uid],
+            });
+
+        await defaultPantryRef.collection('items').add({'_init_': true});
+
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('shoppingList')
+            .add({'_init_': true});
       }
-
-      await _firestore
-          .collection('users')
-          .doc(user!.uid)
-          .collection('pantry')
-          .add({'_init_': true});
-
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('shoppingList')
-          .add({'_init_': true});
 
       return userCredential;
     } on FirebaseAuthException {
       // Propagăm excepția pentru a fi gestionată în UI.
       // Acest lucru permite afișarea unui mesaj specific utilizatorului.
       rethrow;
+    }
+  }
+
+  // Metodă pentru a marca tutorialul ca fiind vizualizat
+  Future<void> markTutorialAsSeen() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).update({
+        'hasSeenTutorial': true,
+      });
     }
   }
 }

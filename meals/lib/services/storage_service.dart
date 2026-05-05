@@ -50,6 +50,19 @@ class StorageService {
     }
   }
 
+  /// Returnează un stream cu toate rețetele favorite ale utilizatorului
+  Stream<QuerySnapshot> getFavorites() {
+    final user = _auth.currentUser;
+    if (user == null) return const Stream.empty();
+
+    return _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('favorites')
+        .orderBy('savedAt', descending: true)
+        .snapshots();
+  }
+
   // --- HISTORY ---
 
   /// Adaugă o rețetă în istoric

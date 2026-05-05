@@ -1,98 +1,132 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// import 'package:meals/screens/tabs.dart';
-import 'package:meals/screens/pantry_screen.dart';
-import 'package:meals/screens/auth/signup.dart';
+import 'package:meals/screens/home.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({super.key});
+
   @override
-  _VerifyEmailScreenState createState() => _VerifyEmailScreenState();
+  State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
 }
 
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  bool _isLoading = false;
-  bool _isVerified = false;
+  Timer? _timer;
+  bool _isResending = false;
+  final User? user = FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
     super.initState();
-    _checkEmailVerified();
+    // Verificăm automat la fiecare 3 secunde dacă user-ul și-a validat contul
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      await user?.reload();
+      if (FirebaseAuth.instance.currentUser?.emailVerified ?? false) {
+        timer.cancel();
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+          );
+        }
+      }
+    });
   }
 
-  Future<void> _checkEmailVerified() async {
-    User? user = _auth.currentUser;
-    await user?.reload();
-    setState(() {
-      _isVerified = user?.emailVerified ?? false;
-    });
-
-    if (_isVerified) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => PantryScreen()),
-      );
-    }
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
-  Future<void> _resendVerificationEmail() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+  Future<void> _resendEmail() async {
+    setState(() => _isResending = true);
     try {
-      await _auth.currentUser?.sendEmailVerification();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Verification email sent! Check your inbox.')),
-      );
+      await user?.sendEmailVerification();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Verification email resent!')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending to email: ${e.toString()}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error resending email: $e')));
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isResending = false);
     }
+  }
+
+  Future<void> _cancelVerification() async {
+    _timer?.cancel();
+    await FirebaseAuth.instance.signOut();
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Verify Email'),
-        actions: [
-          IconButton(
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => SignUpScreen()),
-              );
-            },
-            icon: Icon(Icons.logout),
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Verify your email to continue.'),
-            SizedBox(height: 20),
-            _isLoading
-                ? CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _resendVerificationEmail,
-                    child: Text('Resend Verification Email'),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Icon(
+                Icons.mark_email_unread_outlined,
+                size: 100,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Verify your email',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'We\'ve sent an email to:\n${user?.email ?? ""}\n\nPlease click the link inside to verify your account.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              const Center(child: CircularProgressIndicator()),
+              const SizedBox(height: 32),
+              _isResending
+                  ? const Center(child: CircularProgressIndicator())
+                  : FilledButton.icon(
+                      onPressed: _resendEmail,
+                      icon: const Icon(Icons.send_outlined),
+                      label: const Text('Resend Email'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: _cancelVerification,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: colorScheme.error),
+                  foregroundColor: colorScheme.error,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _checkEmailVerified,
-              child: Text('Verified.'),
-            ),
-          ],
+                ),
+                child: const Text('Cancel / Log Out'),
+              ),
+            ],
+          ),
         ),
       ),
     );

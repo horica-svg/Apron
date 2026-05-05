@@ -59,6 +59,13 @@ class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
     String selectedCategory = 'Other';
     DateTime? selectedDate;
 
+    final pantriesSnapshot = await _pantryService.getUserPantries().first;
+    final pantries = pantriesSnapshot.docs;
+    String selectedPantryId =
+        pantries.any((p) => p.id == PantryService.activePantryId)
+        ? PantryService.activePantryId
+        : (pantries.isNotEmpty ? pantries.first.id : '');
+
     final categories = [
       'Vegetable',
       'Fruit',
@@ -85,6 +92,22 @@ class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
                       controller: quantityController,
                       decoration: const InputDecoration(labelText: 'Quantity'),
                       keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: selectedPantryId,
+                      items: pantries.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return DropdownMenuItem(
+                          value: doc.id,
+                          child: Text(data['name'] ?? 'Pantry'),
+                        );
+                      }).toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedPantryId = val!),
+                      decoration: const InputDecoration(
+                        labelText: 'Select Pantry',
+                      ),
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
@@ -158,7 +181,10 @@ class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
                       expiryDate: selectedDate,
                     );
 
-                    await _pantryService.addPantryItem(newItem);
+                    await _pantryService.addPantryItem(
+                      newItem,
+                      selectedPantryId,
+                    );
                     // Mark as checked in shopping list
                     await _pantryService.toggleShoppingItem(
                       docId,

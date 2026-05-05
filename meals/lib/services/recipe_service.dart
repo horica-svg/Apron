@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:meals/models/recipe.dart';
 import 'package:meals/models/recipe_detail.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Export the model so it's available wherever the service is imported
 export 'package:meals/models/recipe.dart';
 
 class SpoonacularService {
-  static const String _apiKey = '3a095194e47046fcaa46f01ea4ca51db';
-  static const String _baseUrl = 'https://api.spoonacular.com/recipes';
+  static final String _apiKey = dotenv.env['SPOONACULAR_API_KEY'] ?? '';
+  static final String _baseUrl = 'https://api.spoonacular.com/recipes';
 
   Future<List<SpoonacularRecipe>> getRecipesByIngredients(
     List<String> ingredients,
@@ -51,6 +52,36 @@ class SpoonacularService {
     } else {
       throw Exception('Failed to load recipe details: ${response.statusCode}');
     }
+  }
+
+  Future<Map<String, dynamic>> getRandomRecipe() async {
+    final uri = Uri.parse(
+      '$_baseUrl/random',
+    ).replace(queryParameters: {'apiKey': _apiKey, 'number': '1'});
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      final recipes = data['recipes'] as List<dynamic>;
+      if (recipes.isNotEmpty) {
+        return recipes.first as Map<String, dynamic>;
+      }
+    }
+    throw Exception('Failed to load random recipe');
+  }
+
+  Future<List<String>> getIngredientSuggestions(String query) async {
+    final url = Uri.parse(
+      'https://api.spoonacular.com/food/ingredients/autocomplete?query=$query&number=5&apiKey=$_apiKey',
+    );
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+      return data.map((e) => e['name'] as String).toList();
+    }
+    return [];
   }
 
   /// Calculează costul total estimat pentru o listă de ingrediente.
