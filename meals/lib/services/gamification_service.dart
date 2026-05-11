@@ -7,12 +7,12 @@ class GamificationService {
 
   /// Calculează XP-ul necesar pentru a trece la nivelul următor.
   /// Ex: Nivel 1 cere 100 XP, Nivel 2 cere 200 XP, etc.
-  int getXpForNextLevel(int currentLevel) {
+  static int getXpForNextLevel(int currentLevel) {
     return currentLevel * 100;
   }
 
   /// Returnează titlul (Rank-ul) bazat pe nivelul curent
-  String getRankForLevel(int level) {
+  static String getRankForLevel(int level) {
     if (level < 5) return 'Kitchen Novice';
     if (level < 10) return 'Amateur Cook';
     if (level < 20) return 'Sous-Chef';
@@ -82,14 +82,14 @@ class GamificationService {
       currentXP += earnedXP;
       totalRecipesCooked += 1;
 
-      int xpNeeded = getXpForNextLevel(currentLevel);
+      int xpNeeded = GamificationService.getXpForNextLevel(currentLevel);
 
       // Verificăm dacă a crescut în nivel (folosim while în caz că a adunat foarte mult XP)
       while (currentXP >= xpNeeded) {
         currentXP -= xpNeeded;
         currentLevel++;
         leveledUp = true;
-        xpNeeded = getXpForNextLevel(currentLevel);
+        xpNeeded = GamificationService.getXpForNextLevel(currentLevel);
       }
 
       newLevel = currentLevel;

@@ -33,6 +33,8 @@ class AuthService {
           'currentXP': 0,
           'totalRecipesCooked': 0,
           'hasSeenTutorial': false,
+          'username': '',
+          'profilePicture': '',
         });
 
         // Initialize Default Pantry (Main)
@@ -63,12 +65,42 @@ class AuthService {
   }
 
   // Metodă pentru a marca tutorialul ca fiind vizualizat
-  Future<void> markTutorialAsSeen() async {
+  Future<void> completeOnboarding(String username, String avatar) async {
     final user = _auth.currentUser;
     if (user != null) {
       await _firestore.collection('users').doc(user.uid).update({
         'hasSeenTutorial': true,
+        'username': username,
+        'profilePicture': avatar,
       });
+    }
+  }
+
+  // Metodă pentru a actualiza profilul (username și avatar)
+  Future<void> updateUserProfile(String username, String avatar) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).update({
+        'username': username,
+        'profilePicture': avatar,
+      });
+    }
+  }
+
+  // Metodă pentru a schimba parola utilizatorului
+  Future<void> updatePassword(String newPassword) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.updatePassword(newPassword);
+    }
+  }
+
+  // Metodă pentru a șterge contul utilizatorului
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).delete();
+      await user.delete();
     }
   }
 }

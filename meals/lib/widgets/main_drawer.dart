@@ -9,6 +9,8 @@ import 'package:meals/services/gamification_service.dart';
 import 'package:meals/screens/cooking_history_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:meals/screens/auth_wrapper.dart';
+import 'package:meals/screens/profile_screen.dart';
+import 'package:meals/screens/friends_screen.dart';
 
 class MainDrawer extends StatelessWidget {
   const MainDrawer({super.key});
@@ -67,72 +69,74 @@ class MainDrawer extends StatelessWidget {
                 end: Alignment.bottomCenter,
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'media/APRON_image.png',
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Apron',
-                  style: Theme.of(context).textTheme.headlineSmall!.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Your smart kitchen assistant',
-                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                StreamBuilder<DocumentSnapshot>(
-                  stream: gamificationService.getUserGamificationStats(),
-                  builder: (context, snapshot) {
-                    int level = 1;
-                    int currentXP = 0;
-                    int xpNeeded = 100;
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: gamificationService.getUserGamificationStats(),
+              builder: (context, snapshot) {
+                int level = 1;
+                int currentXP = 0;
+                int xpNeeded = 100;
+                String username = 'Chef';
+                String avatar = '👨‍🍳';
 
-                    if (snapshot.hasData && snapshot.data!.exists) {
-                      final data =
-                          snapshot.data!.data() as Map<String, dynamic>?;
-                      if (data != null) {
-                        level = data['level'] ?? 1;
-                        currentXP = data['currentXP'] ?? 0;
-                        xpNeeded = gamificationService.getXpForNextLevel(level);
-                      }
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  final data = snapshot.data!.data() as Map<String, dynamic>?;
+                  if (data != null) {
+                    level = data['level'] ?? 1;
+                    currentXP = data['currentXP'] ?? 0;
+                    xpNeeded = GamificationService.getXpForNextLevel(level);
+
+                    if (data['username'] != null &&
+                        data['username'].toString().isNotEmpty) {
+                      username = data['username'];
                     }
-                    String rankTitle = gamificationService.getRankForLevel(
-                      level,
-                    );
-                    double progress = (xpNeeded > 0)
-                        ? (currentXP / xpNeeded).clamp(0.0, 1.0)
-                        : 0.0;
+                    if (data['profilePicture'] != null &&
+                        data['profilePicture'].toString().isNotEmpty) {
+                      avatar = data['profilePicture'];
+                    }
+                  }
+                }
 
-                    return Column(
+                String rankTitle = GamificationService.getRankForLevel(level);
+                double progress = (xpNeeded > 0)
+                    ? (currentXP / xpNeeded).clamp(0.0, 1.0)
+                    : 0.0;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Text(avatar, style: const TextStyle(fontSize: 40)),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      username,
+                      style: Theme.of(context).textTheme.headlineSmall!
+                          .copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ready to cook?',
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
@@ -174,10 +178,10 @@ class MainDrawer extends StatelessWidget {
                           ),
                         ),
                       ],
-                    );
-                  },
-                ),
-              ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 8),
@@ -189,6 +193,18 @@ class MainDrawer extends StatelessWidget {
                   Navigator.of(context).pop();
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                  );
+                }),
+                _buildListTile(context, Icons.person_outline, 'My Profile', () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (ctx) => const ProfileScreen()),
+                  );
+                }),
+                _buildListTile(context, Icons.group_outlined, 'Community', () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (ctx) => const FriendsScreen()),
                   );
                 }),
                 _buildListTile(

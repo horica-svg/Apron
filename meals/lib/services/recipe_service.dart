@@ -11,6 +11,9 @@ class SpoonacularService {
   static final String _apiKey = dotenv.env['SPOONACULAR_API_KEY'] ?? '';
   static final String _baseUrl = 'https://api.spoonacular.com/recipes';
 
+  static Map<String, dynamic>? _cachedRandomRecipe;
+  static DateTime? _lastFetchTime;
+
   Future<List<SpoonacularRecipe>> getRecipesByIngredients(
     List<String> ingredients,
   ) async {
@@ -54,7 +57,20 @@ class SpoonacularService {
     }
   }
 
-  Future<Map<String, dynamic>> getRandomRecipe() async {
+  Future<Map<String, dynamic>> getRandomRecipe({
+    bool forceRefresh = false,
+  }) async {
+    final now = DateTime.now();
+
+    // Dacă avem deja o rețetă salvată și a fost preluată în ultimele 4 ore, o returnăm pe aceea
+    if (!forceRefresh &&
+        _cachedRandomRecipe != null &&
+        _lastFetchTime != null) {
+      if (now.difference(_lastFetchTime!).inHours < 4) {
+        return _cachedRandomRecipe!;
+      }
+    }
+
     final uri = Uri.parse(
       '$_baseUrl/random',
     ).replace(queryParameters: {'apiKey': _apiKey, 'number': '1'});
@@ -65,7 +81,9 @@ class SpoonacularService {
       final Map<String, dynamic> data = json.decode(response.body);
       final recipes = data['recipes'] as List<dynamic>;
       if (recipes.isNotEmpty) {
-        return recipes.first as Map<String, dynamic>;
+        _cachedRandomRecipe = recipes.first as Map<String, dynamic>;
+        _lastFetchTime = now;
+        return _cachedRandomRecipe!;
       }
     }
     throw Exception('Failed to load random recipe');

@@ -11,8 +11,28 @@ class TutorialScreen extends StatefulWidget {
 class _TutorialScreenState extends State<TutorialScreen> {
   final PageController _pageController = PageController();
   final AuthService _authService = AuthService();
+  final TextEditingController _usernameController = TextEditingController();
   int _currentPage = 0;
   bool _isSaving = false;
+  String _selectedAvatar = '👨‍🍳'; // Avatar default
+
+  final List<String> _avatars = [
+    '👨‍🍳',
+    '👩‍🍳',
+    '🍕',
+    '🥗',
+    '🍔',
+    '🥑',
+    '🥞',
+    '🌶️',
+  ];
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
 
   void _onPageChanged(int index) {
     setState(() {
@@ -21,9 +41,24 @@ class _TutorialScreenState extends State<TutorialScreen> {
   }
 
   Future<void> _finishTutorial() async {
+    final username = _usernameController.text.trim();
+    if (username.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Te rugăm să alegi un nume de utilizator!'),
+        ),
+      );
+      _pageController.animateToPage(
+        3,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
-      await _authService.markTutorialAsSeen();
+      await _authService.completeOnboarding(username, _selectedAvatar);
       // Aici nu este necesar un Navigator.push, deoarece StreamBuilder-ul
       // din AuthWrapper va detecta schimbarea stării și va încărca HomeScreen-ul.
     } catch (e) {
@@ -101,6 +136,65 @@ class _TutorialScreenState extends State<TutorialScreen> {
                     description:
                         'Cook meals to earn XP, level up, and progress from a Kitchen Novice to a Culinary Legend!',
                   ),
+                  _buildCustomPage(
+                    context,
+                    title: 'Choose your Chef Name',
+                    description: 'This is how other cooks will see you.',
+                    child: TextField(
+                      controller: _usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        hintText: 'e.g., MasterChef99',
+                        prefixIcon: const Icon(Icons.person_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+                  _buildCustomPage(
+                    context,
+                    title: 'Pick an Avatar',
+                    description:
+                        'Choose a profile picture that represents your cooking style.',
+                    child: Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      alignment: WrapAlignment.center,
+                      children: _avatars.map((avatar) {
+                        final isSelected = _selectedAvatar == avatar;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedAvatar = avatar),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerHighest,
+                              shape: BoxShape.circle,
+                              border: isSelected
+                                  ? Border.all(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      width: 3,
+                                    )
+                                  : null,
+                            ),
+                            child: Text(
+                              avatar,
+                              style: const TextStyle(fontSize: 32),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -112,7 +206,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   // Indicator pentru pagini
                   Row(
                     children: List.generate(
-                      3,
+                      5,
                       (index) => AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         margin: const EdgeInsets.only(right: 8),
@@ -128,7 +222,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                     ),
                   ),
                   // Butonul Next / Get Started
-                  _currentPage == 2
+                  _currentPage == 4
                       ? FilledButton(
                           onPressed: _isSaving ? null : _finishTutorial,
                           child: _isSaving
@@ -189,6 +283,41 @@ class _TutorialScreenState extends State<TutorialScreen> {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCustomPage(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required Widget child,
+  }) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              description,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: Colors.grey.shade700),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 48),
+            child,
+          ],
+        ),
       ),
     );
   }
