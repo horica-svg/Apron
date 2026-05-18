@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meals/models/recipe_detail.dart';
 import 'package:meals/services/pantry_service.dart';
 import 'package:meals/services/recipe_service.dart';
@@ -73,13 +74,70 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   Future<void> _addToShoppingList() async {
     if (widget.missedIngredients.isEmpty) return;
 
+    // 1. Verificăm dacă există liste de cumpărături
+    final listsSnapshot = await _pantryService.getShoppingLists().first;
+    final existingLists = listsSnapshot.docs;
+
+    String? listId;
+
+    // 2. Dacă există liste, întrebăm utilizatorul unde să adauge
+    if (existingLists.isNotEmpty) {
+      listId = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Add to Shopping List'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: existingLists.length + 1, // +1 pentru "Create New"
+              itemBuilder: (context, index) {
+                if (index == existingLists.length) {
+                  return ListTile(
+                    leading: const Icon(Icons.add),
+                    title: const Text('Create a new list'),
+                    onTap: () => Navigator.of(ctx).pop('CREATE_NEW'),
+                  );
+                }
+                final list = existingLists[index];
+                final listData = list.data() as Map<String, dynamic>;
+                return ListTile(
+                  title: Text(listData['name'] ?? 'Unnamed List'),
+                  onTap: () => Navigator.of(ctx).pop(list.id),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+
+      if (listId == null) return; // User canceled
+    }
+
+    // 3. Dacă nu există liste sau a ales "Create New", creăm una nouă
+    if (listId == 'CREATE_NEW' || existingLists.isEmpty) {
+      // Folosim titlul rețetei ca nume default pentru noua listă
+      listId = await _pantryService.createShoppingList(
+        'Ingredients for ${widget.title}',
+      );
+    }
+
     try {
-      await _pantryService.addShoppingListItems(widget.missedIngredients);
+      await _pantryService.addShoppingListItems(
+        listId!,
+        widget.missedIngredients,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Au fost adăugate ${widget.missedIngredients.length} ingrediente în lista de cumpărături!',
+              'Added ${widget.missedIngredients.length} ingredients to your shopping list!',
             ),
           ),
         );
@@ -88,7 +146,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Eroare la adăugare: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error adding items: $e')));
       }
     }
   }

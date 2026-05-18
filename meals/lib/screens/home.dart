@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:meals/widgets/main_drawer.dart';
 import 'package:meals/services/pantry_service.dart';
 import 'package:meals/services/recipe_service.dart';
-import 'package:meals/widgets/last_used_recipes_grid.dart';
 import 'package:meals/widgets/suggested_recipe_card.dart';
 import 'package:meals/services/recipe_finder_service.dart';
 
@@ -19,12 +18,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final SpoonacularService _spoonacularService = SpoonacularService();
   final RecipeFinderService _recipeFinderService = RecipeFinderService();
   bool _isLoading = false;
-  Future<Map<String, dynamic>>? _randomRecipeFuture;
+  Future<List<Map<String, dynamic>>>? _randomRecipesFuture;
 
   @override
   void initState() {
     super.initState();
-    _randomRecipeFuture = _spoonacularService.getRandomRecipe();
+    _randomRecipesFuture = _spoonacularService.getRandomRecipes(number: 3);
   }
 
   Future<void> _findRecipes() async {
@@ -125,43 +124,133 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           drawer: const MainDrawer(),
           body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Section: Button to find recipes
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20.0, 24.0, 20.0, 12.0),
+                child: Text(
+                  "What are we cooking today?",
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ),
               Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton.icon(
-                        onPressed: _findRecipes,
-                        icon: const Icon(Icons.restaurant),
-                        label: const Text('Find Recipes based on Pantry'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
+                child: InkWell(
+                  onTap: _isLoading ? null : _findRecipes,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.secondary,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-              ),
-              const Divider(),
-              // Grid Section: Last 8 recipes
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Last Used Recipes',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Magic Recipe Finder',
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Let us suggest meals based on what you already have in your pantry!',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onPrimary
+                                      .withValues(alpha: 0.9),
+                                  fontSize: 13,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimary.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: _isLoading
+                              ? SizedBox(
+                                  width: 28,
+                                  height: 28,
+                                  child: CircularProgressIndicator(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.auto_awesome,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                  size: 32,
+                                ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              const Expanded(child: LastUsedRecipesGrid()),
-              const Divider(),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Suggested for You',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Text(
+                  'Suggested for You',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
-              SuggestedRecipeCard(randomRecipeFuture: _randomRecipeFuture),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SuggestedRecipeCard(
+                  randomRecipesFuture: _randomRecipesFuture,
+                ),
+              ),
             ],
           ),
         );

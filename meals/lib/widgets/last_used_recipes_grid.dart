@@ -26,7 +26,7 @@ class LastUsedRecipesGrid extends StatelessWidget {
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(
-            child: Text("You haven't cooked anything lately."),
+            child: Text("You haven't viewed any recipes lately."),
           );
         }
 

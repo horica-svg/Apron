@@ -3,6 +3,7 @@ import 'package:meals/services/pantry_service.dart';
 import 'package:meals/services/recipe_service.dart';
 import 'package:meals/screens/pantry_screen.dart';
 import 'package:meals/screens/recipe_detail_screen.dart';
+import 'package:meals/services/storage_service.dart';
 
 class RecipeFinderService {
   final PantryService _pantryService = PantryService();
@@ -161,6 +162,13 @@ class RecipeFinderService {
                         elevation: 2,
                         child: InkWell(
                           onTap: () {
+                            // Adăugăm rețeta în istoricul Last Used Recipes de pe Home
+                            StorageService().addToHistory(
+                              recipeId: recipe.id,
+                              title: recipe.title,
+                              imageUrl: recipe.image,
+                            );
+
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (ctx) => RecipeDetailScreen(

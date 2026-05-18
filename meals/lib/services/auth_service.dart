@@ -48,12 +48,6 @@ class AuthService {
             });
 
         await defaultPantryRef.collection('items').add({'_init_': true});
-
-        await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .collection('shoppingList')
-            .add({'_init_': true});
       }
 
       return userCredential;

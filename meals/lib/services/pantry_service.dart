@@ -135,7 +135,7 @@ class PantryService {
   }
 
   /// Adaugă o listă de ingrediente în lista de cumpărături a utilizatorului.
-  Future<void> addShoppingListItems(List<String> items) async {
+  Future<void> addShoppingListItems(String listId, List<String> items) async {
     final user = _auth.currentUser;
     if (user == null || items.isEmpty) return;
 
@@ -143,7 +143,9 @@ class PantryService {
     final collection = _firestore
         .collection('users')
         .doc(user.uid)
-        .collection('shoppingList');
+        .collection('shopping_lists')
+        .doc(listId)
+        .collection('items');
 
     for (final item in items) {
       final docRef = collection.doc();
@@ -153,45 +155,109 @@ class PantryService {
         'quantity': 1,
         'unit': '',
         'checked': false,
+        'addedAt': FieldValue.serverTimestamp(),
       });
     }
 
     await batch.commit();
   }
 
+  /// Creează o nouă listă de cumpărături și returnează ID-ul ei.
+  Future<String> createShoppingList(String name) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception("User not logged in");
+
+    final docRef = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('shopping_lists')
+        .add({'name': name, 'createdAt': FieldValue.serverTimestamp()});
+
+    // Adăugăm un document de inițializare pentru a asigura existența subcolecției
+    await docRef.collection('items').add({'_init_': true});
+
+    return docRef.id;
+  }
+
   /// Returnează un stream cu lista de cumpărături.
-  Stream<QuerySnapshot> getShoppingList() {
+  Stream<QuerySnapshot> getShoppingLists() {
     final user = _auth.currentUser;
     if (user == null) return const Stream.empty();
     return _firestore
         .collection('users')
         .doc(user.uid)
-        .collection('shoppingList')
+        .collection('shopping_lists')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  /// Returnează un stream cu itemii dintr-o listă specifică.
+  Stream<QuerySnapshot> getShoppingListItems(String listId) {
+    final user = _auth.currentUser;
+    if (user == null) return const Stream.empty();
+    return _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('shopping_lists')
+        .doc(listId)
+        .collection('items')
+        .orderBy('addedAt')
         .snapshots();
   }
 
   /// Schimbă starea (bifat/nebifat) a unui element din lista de cumpărături.
-  Future<void> toggleShoppingItem(String id, bool currentStatus) async {
+  Future<void> toggleShoppingItem(
+    String listId,
+    String itemId,
+    bool currentStatus,
+  ) async {
     final user = _auth.currentUser;
     if (user == null) return;
     await _firestore
         .collection('users')
         .doc(user.uid)
-        .collection('shoppingList')
-        .doc(id)
+        .collection('shopping_lists')
+        .doc(listId)
+        .collection('items')
+        .doc(itemId)
         .update({'checked': !currentStatus});
   }
 
   /// Șterge un element din lista de cumpărături.
-  Future<void> deleteShoppingItem(String id) async {
+  Future<void> deleteShoppingItem(String listId, String itemId) async {
     final user = _auth.currentUser;
     if (user == null) return;
     await _firestore
         .collection('users')
         .doc(user.uid)
-        .collection('shoppingList')
-        .doc(id)
+        .collection('shopping_lists')
+        .doc(listId)
+        .collection('items')
+        .doc(itemId)
         .delete();
+  }
+
+  /// Șterge o listă de cumpărături cu toate elementele ei.
+  Future<void> deleteShoppingList(String listId) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final listRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('shopping_lists')
+        .doc(listId);
+
+    // Ștergem toate elementele din subcolecție
+    final itemsSnapshot = await listRef.collection('items').get();
+    final batch = _firestore.batch();
+    for (final doc in itemsSnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    // Apoi ștergem lista
+    batch.delete(listRef);
+
+    await batch.commit();
   }
 
   /// Convertește cantitatea rețetei în unitatea de măsură folosită în cămară.

@@ -1,0 +1,527 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:meals/models/pantry_item.dart';
+import 'package:meals/services/pantry_service.dart';
+import 'package:meals/services/recipe_service.dart';
+
+class ShoppingListDetailScreen extends StatefulWidget {
+  final String listId;
+  final String listName;
+
+  const ShoppingListDetailScreen({
+    super.key,
+    required this.listId,
+    required this.listName,
+  });
+
+  @override
+  State<ShoppingListDetailScreen> createState() =>
+      _ShoppingListDetailScreenState();
+}
+
+class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
+  final PantryService _pantryService = PantryService();
+  final SpoonacularService _spoonacularService = SpoonacularService();
+  double? _totalCost;
+  bool _isCalculating = false;
+
+  Future<void> _calculateTotal(List<String> ingredients) async {
+    setState(() {
+      _isCalculating = true;
+      _totalCost = null;
+    });
+
+    try {
+      final cost = await _spoonacularService.getIngredientsTotalCost(
+        ingredients,
+      );
+      if (mounted) {
+        setState(() {
+          _totalCost = cost;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error calculating price: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCalculating = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showAddItemDialog() async {
+    String itemName = '';
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Item'),
+        content: Autocomplete<String>(
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (textEditingValue.text.length < 2) {
+              return const Iterable<String>.empty();
+            }
+            return _spoonacularService.getIngredientSuggestions(
+              textEditingValue.text,
+            );
+          },
+          onSelected: (String selection) {
+            itemName = selection;
+          },
+          fieldViewBuilder:
+              (
+                BuildContext context,
+                TextEditingController fieldController,
+                FocusNode fieldFocusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                return TextField(
+                  controller: fieldController,
+                  focusNode: fieldFocusNode,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Item Name',
+                    hintText: 'Search for an ingredient...',
+                  ),
+                  textCapitalization: TextCapitalization.sentences,
+                  onChanged: (val) => itemName = val,
+                );
+              },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final itemToAdd = itemName.trim();
+              if (itemToAdd.isNotEmpty) {
+                await _pantryService.addShoppingListItems(widget.listId, [
+                  itemToAdd,
+                ]);
+                if (context.mounted) {
+                  Navigator.of(ctx).pop();
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddToPantryDialog(
+    BuildContext context,
+    String itemName,
+    String docId,
+    bool currentStatus,
+  ) async {
+    final quantityController = TextEditingController(text: '1');
+    String selectedUnit = 'pcs';
+    String selectedCategory = 'Other';
+    DateTime? selectedDate;
+
+    final pantriesSnapshot = await _pantryService.getUserPantries().first;
+    final pantries = pantriesSnapshot.docs;
+    String selectedPantryId =
+        pantries.any((p) => p.id == PantryService.activePantryId)
+        ? PantryService.activePantryId
+        : (pantries.isNotEmpty ? pantries.first.id : '');
+
+    final categories = [
+      'Vegetable',
+      'Fruit',
+      'Meat',
+      'Dairy',
+      'Grain',
+      'Spice',
+      'Other',
+    ];
+    final units = ['pcs', 'kg', 'g', 'l', 'ml'];
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Add $itemName to Pantry'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: quantityController,
+                      decoration: const InputDecoration(labelText: 'Quantity'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: selectedPantryId,
+                      items: pantries.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return DropdownMenuItem(
+                          value: doc.id,
+                          child: Text(data['name'] ?? 'Pantry'),
+                        );
+                      }).toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedPantryId = val!),
+                      decoration: const InputDecoration(
+                        labelText: 'Select Pantry',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: selectedUnit,
+                      items: units
+                          .map(
+                            (u) => DropdownMenuItem(value: u, child: Text(u)),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(() => selectedUnit = val!),
+                      decoration: const InputDecoration(labelText: 'Unit'),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: selectedCategory,
+                      items: categories
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedCategory = val!),
+                      decoration: const InputDecoration(labelText: 'Category'),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Text(
+                          selectedDate == null
+                              ? 'No Expiry Date'
+                              : 'Expires: ${selectedDate!.toLocal().toString().split(' ')[0]}',
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 365 * 5),
+                              ),
+                            );
+                            if (picked != null) {
+                              setState(() => selectedDate = picked);
+                            }
+                          },
+                          child: const Text('Pick Date'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final quantity =
+                        double.tryParse(quantityController.text) ?? 1.0;
+
+                    final newItem = PantryItem(
+                      id: '', // ID is generated by Firestore
+                      name: itemName,
+                      quantity: quantity,
+                      unit: selectedUnit,
+                      category: selectedCategory,
+                      expiryDate: selectedDate,
+                    );
+
+                    await _pantryService.addPantryItem(
+                      newItem,
+                      selectedPantryId,
+                    );
+                    // Mark as checked in shopping list
+                    await _pantryService.toggleShoppingItem(
+                      widget.listId,
+                      docId,
+                      currentStatus,
+                    );
+
+                    if (context.mounted) {
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('$itemName added to pantry!')),
+                      );
+                    }
+                  },
+                  child: const Text('Add & Check'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _pantryService.getShoppingListItems(widget.listId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            appBar: AppBar(title: Text(widget.listName)),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(title: Text(widget.listName)),
+            body: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
+
+        final items =
+            snapshot.data?.docs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return !data.containsKey('_init_');
+            }).toList() ??
+            [];
+
+        // Auto clear if all checked
+        if (items.isNotEmpty) {
+          final allChecked = items.every((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return data['checked'] == true;
+          });
+
+          if (allChecked) {
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('All items bought! Clearing list...'),
+                ),
+              );
+              await Future.delayed(const Duration(seconds: 2));
+              for (final doc in items) {
+                _pantryService.deleteShoppingItem(widget.listId, doc.id);
+              }
+            });
+          }
+        }
+
+        if (items.isEmpty) {
+          return Scaffold(
+            appBar: AppBar(title: Text(widget.listName)),
+            floatingActionButton: FloatingActionButton(
+              onPressed: _showAddItemDialog,
+              tooltip: 'Add Item',
+              child: const Icon(Icons.add),
+            ),
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.shopping_basket_outlined,
+                    size: 80,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.secondary.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'This shopping list is empty.',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Add ingredients from recipes to see them here.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final ingredientNames = items.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return data['name'] as String;
+        }).toList();
+
+        return Scaffold(
+          appBar: AppBar(title: Text(widget.listName)),
+          floatingActionButton: FloatingActionButton(
+            onPressed: _showAddItemDialog,
+            tooltip: 'Add Item',
+            child: const Icon(Icons.add),
+          ),
+          body: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final doc = items[index];
+              final itemData = doc.data() as Map<String, dynamic>;
+              final name = itemData['name'] ?? 'Unknown';
+              final bool isChecked = itemData['checked'] ?? false;
+
+              return Dismissible(
+                key: Key(doc.id),
+                direction: DismissDirection.endToStart,
+                background: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    child: Icon(
+                      Icons.delete_outline,
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+                onDismissed: (direction) {
+                  _pantryService.deleteShoppingItem(widget.listId, doc.id);
+                },
+                child: Card(
+                  elevation: isChecked ? 0 : 2,
+                  color: isChecked
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.5)
+                      : Theme.of(context).colorScheme.surfaceContainerLow,
+                  margin: const EdgeInsets.symmetric(
+                    vertical: 4,
+                    horizontal: 4,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: CheckboxListTile(
+                    controlAffinity: ListTileControlAffinity.leading,
+                    activeColor: Theme.of(context).colorScheme.primary,
+                    title: Text(
+                      name,
+                      style: TextStyle(
+                        decoration: isChecked
+                            ? TextDecoration.lineThrough
+                            : null,
+                        color: isChecked
+                            ? Colors.grey
+                            : Theme.of(context).textTheme.bodyLarge?.color,
+                        fontWeight: isChecked
+                            ? FontWeight.normal
+                            : FontWeight.w500,
+                      ),
+                    ),
+                    value: isChecked,
+                    onChanged: (val) {
+                      if (val == true) {
+                        _showAddToPantryDialog(
+                          context,
+                          name,
+                          doc.id,
+                          isChecked,
+                        );
+                      } else {
+                        _pantryService.toggleShoppingItem(
+                          widget.listId,
+                          doc.id,
+                          isChecked,
+                        );
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+          bottomNavigationBar: Container(
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Total Cost',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelMedium?.copyWith(color: Colors.grey),
+                      ),
+                      Text(
+                        _totalCost != null
+                            ? '€${_totalCost!.toStringAsFixed(2)}'
+                            : '--',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                      ),
+                    ],
+                  ),
+                  if (_isCalculating)
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    FilledButton.icon(
+                      onPressed: () => _calculateTotal(ingredientNames),
+                      icon: const Icon(Icons.calculate_outlined),
+                      label: const Text('Calculate'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

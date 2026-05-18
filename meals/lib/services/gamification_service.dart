@@ -47,13 +47,12 @@ class GamificationService {
 
     final userRef = _firestore.collection('users').doc(user.uid);
 
-    // Verificăm dacă rețeta a mai fost gătită anterior
+    // Verificăm dacă rețeta a mai fost gătită anterior folosind ID-ul ei ca referință unică
     final previouslyCooked = await userRef
         .collection('cooked_meals')
-        .where('recipeId', isEqualTo: recipeId)
-        .limit(1)
+        .doc(recipeId.toString())
         .get();
-    final bool isFirstTime = previouslyCooked.docs.isEmpty;
+    final bool isFirstTime = !previouslyCooked.exists;
 
     // Calculăm XP-ul de adăugat
     final int earnedXP = calculateEarnedXP(
@@ -101,15 +100,17 @@ class GamificationService {
         'totalRecipesCooked': totalRecipesCooked,
       });
 
-      // Salvăm rețeta în istoricul de preparate gătite
-      final cookedMealRef = userRef.collection('cooked_meals').doc();
+      // Salvăm rețeta în istoricul de preparate gătite (folosim id-ul ei pentru a o aduce în top fără a o duplica)
+      final cookedMealRef = userRef
+          .collection('cooked_meals')
+          .doc(recipeId.toString());
       transaction.set(cookedMealRef, {
         'recipeId': recipeId,
         'title': title,
         'image': imageUrl,
         'earnedXP': earnedXP,
-        'cookedAt': FieldValue.serverTimestamp(),
-      });
+        'cookedAt': Timestamp.now(),
+      }, SetOptions(merge: true));
     });
 
     // Returnăm aceste date pentru a putea declanșa animații în interfață!

@@ -84,7 +84,7 @@ class StorageService {
       'id': recipeId,
       'title': title,
       'image': imageUrl,
-      'viewedAt': FieldValue.serverTimestamp(),
+      'viewedAt': Timestamp.now(),
     }, SetOptions(merge: true));
   }
 }
