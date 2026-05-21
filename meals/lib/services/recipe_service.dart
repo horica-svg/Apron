@@ -139,4 +139,28 @@ class SpoonacularService {
       throw Exception('Failed to calculate cost: ${response.statusCode}');
     }
   }
+
+  /// Caută rețete după nume (folosind endpoint-ul complexSearch)
+  Future<List<dynamic>> searchRecipesByName(String query) async {
+    if (query.trim().isEmpty) return [];
+
+    final uri = Uri.parse('$_baseUrl/complexSearch').replace(
+      queryParameters: {
+        'apiKey': _apiKey,
+        'query': query,
+        'number': '15', // Limităm rezultatele la 15
+      },
+    );
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      return data['results'] as List<dynamic>;
+    } else {
+      throw Exception(
+        'Failed to search recipes by name: ${response.statusCode}',
+      );
+    }
+  }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meals/models/recipe_detail.dart';
 import 'package:meals/services/pantry_service.dart';
 import 'package:meals/services/recipe_service.dart';
